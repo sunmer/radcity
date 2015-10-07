@@ -1,15 +1,14 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
+var gameSettings = { movementSpeed: 3, backgroundSpeed: 2 };
 var assetPlayer = { res: 'assets/player_sprite.png', anim: 'playerAnim', scale: { x: .5, y: .5 }, key: 'player' };
 var assetEnemy = { res: 'assets/enemy_sprite.png', anim: 'enemyAnim', scale: { x: 0.5, y: 0.5 }, key: 'enemy' };
 var assetLevel = { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' };
 
 var states = {
     player: undefined,
-    playerAnim: undefined,
-    enemy: undefined,
-    enemyAnim: undefined,
+    enemies: [],
     level: undefined,
 
     preload: function() {
@@ -26,50 +25,64 @@ var states = {
         this.player.body.collideWorldBounds = true;
         this.player.anchor.set(0.5);
         this.player.scale.setTo(assetPlayer.scale.x, assetPlayer.scale.y);
-        this.playerAnim = this.player.animations.add(assetPlayer.anim);
+        this.player.animations.add(assetPlayer.anim);
         this.player.animations.play(assetPlayer.anim, 10, true);
 
-        this.enemy = game.add.sprite(-100, -100, assetEnemy.key);
-        this.enemy.scale.setTo(assetEnemy.scale.x, assetEnemy.scale.y);
-        this.enemyAnim = this.enemy.animations.add(assetEnemy.anim);
-        this.enemy.animations.play(assetEnemy.anim, 10, true);
+        this.generateEnemy();
     },
 
     update: function() {
-        this.level.tilePosition.x -= 1;
+        this.level.tilePosition.x -= gameSettings.backgroundSpeed;
 
         if(game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+            console.log(this.player.y);
+            console.log(game.stage.getBounds().height / 2)
             if(this.player.y > (game.stage.getBounds().height / 2)) {
-                this.player.y -= 2;
+                this.player.y -= gameSettings.movementSpeed;
             }
         }
         if(game.input.keyboard.isDown(Phaser.Keyboard.S)) {
-            this.player.y += 2;
+            this.player.y += gameSettings.movementSpeed;
         }
         if(game.input.keyboard.isDown(Phaser.Keyboard.A)) {
-            this.player.x -= 2;
+            this.player.x -= gameSettings.movementSpeed;
         }
         if(game.input.keyboard.isDown(Phaser.Keyboard.D)) {
-            this.player.x += 2;
+            this.player.x += gameSettings.movementSpeed;
         }
 
-        if(this.enemy.x < 0) {
-            this.generateEnemy();
-        } else {
-            this.enemy.x -= 2;
-        }
+        for(var i = 0; i < this.enemies.length; i++) {
+            var enemy = this.enemies[i];
+            enemy.x -= gameSettings.movementSpeed;
 
-        if(this.checkOverlap(this.player, this.enemy)) {
-            this.gameOver();
+            if(enemy.x < 0) {
+                enemy.kill();
+                this.enemies.splice(i, 1);
+                this.generateEnemy();
+            }
+
+            if(this.checkOverlap(this.player, enemy)) {
+                this.gameOver();
+            }
         }
     },
 
     generateEnemy: function() {
         var minY = game.stage.getBounds().height / 2;
-        var maxY = game.stage.getBounds().height - this.enemy.getBounds().height;
+        var maxY = game.stage.getBounds().width;
 
-        this.enemy.x = game.stage.getBounds().width;
-        this.enemy.y = Math.random() * (maxY - minY) + minY;
+        var enemy = game.add.sprite(game.stage.getBounds().width, Math.random() * (maxY - minY) + minY, assetEnemy.key);
+        enemy.scale.setTo(assetEnemy.scale.x, assetEnemy.scale.y);
+
+        var enemyAnim = enemy.animations.add(assetEnemy.anim);
+        enemy.animations.play(assetEnemy.anim, 10, true);
+        enemy.outOfBoundsKill = true;
+
+        this.enemies.push(enemy);
+    },
+
+    destroyEnemy: function(enemy) {
+
     },
 
     checkOverlap: function(spriteA, spriteB) {
