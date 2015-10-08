@@ -1,7 +1,7 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
-var gameSettings = { movementSpeed: 3, backgroundSpeed: 2 };
+var gameSettings = { movementSpeed: 3, backgroundSpeed: 2, difficulty: 2, distanceBetweenCars: 200 };
 var assetPlayer = { res: 'assets/player_sprite.png', anim: 'playerAnim', scale: { x: .5, y: .5 }, key: 'player' };
 var assetEnemy = { res: 'assets/enemy_sprite.png', anim: 'enemyAnim', scale: { x: 0.5, y: 0.5 }, key: 'enemy' };
 var assetLevel = { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' };
@@ -10,11 +10,14 @@ var states = {
     player: undefined,
     enemies: [],
     level: undefined,
+    gameOver: false,
 
     preload: function() {
         game.load.spritesheet(assetPlayer.key, assetPlayer.res, 212, 104, 2);
         game.load.spritesheet(assetEnemy.key, assetEnemy.res, 212, 104, 2);
         game.load.image(assetLevel.key, assetLevel.res);
+
+        game.load.spritesheet('gameOver', 'assets/player_sprite_gameover.png', 212, 104, 2);
     },
 
     create: function() {
@@ -28,57 +31,66 @@ var states = {
         this.player.animations.add(assetPlayer.anim);
         this.player.animations.play(assetPlayer.anim, 10, true);
 
-        this.generateEnemy();
+        this.generateEnemy(gameSettings.difficulty);
     },
 
     update: function() {
-        this.level.tilePosition.x -= gameSettings.backgroundSpeed;
+        if(this.gameOver != true) {
+            this.level.tilePosition.x -= gameSettings.backgroundSpeed;
 
-        if(game.input.keyboard.isDown(Phaser.Keyboard.W)) {
-            console.log(this.player.y);
-            console.log(game.stage.getBounds().height / 2)
-            if(this.player.y > (game.stage.getBounds().height / 2)) {
-                this.player.y -= gameSettings.movementSpeed;
+            if(game.input.keyboard.isDown(Phaser.Keyboard.W)) {
+                if(this.player.y > (game.stage.getBounds().height / 2)) {
+                    this.player.y -= gameSettings.movementSpeed;
+                }
             }
-        }
-        if(game.input.keyboard.isDown(Phaser.Keyboard.S)) {
-            this.player.y += gameSettings.movementSpeed;
-        }
-        if(game.input.keyboard.isDown(Phaser.Keyboard.A)) {
-            this.player.x -= gameSettings.movementSpeed;
-        }
-        if(game.input.keyboard.isDown(Phaser.Keyboard.D)) {
-            this.player.x += gameSettings.movementSpeed;
-        }
-
-        for(var i = 0; i < this.enemies.length; i++) {
-            var enemy = this.enemies[i];
-            enemy.x -= gameSettings.movementSpeed;
-
-            if(enemy.x < 0) {
-                enemy.kill();
-                this.enemies.splice(i, 1);
-                this.generateEnemy();
+            if(game.input.keyboard.isDown(Phaser.Keyboard.S)) {
+                this.player.y += gameSettings.movementSpeed;
+            }
+            if(game.input.keyboard.isDown(Phaser.Keyboard.A)) {
+                this.player.x -= gameSettings.movementSpeed;
+            }
+            if(game.input.keyboard.isDown(Phaser.Keyboard.D)) {
+                this.player.x += gameSettings.movementSpeed;
             }
 
-            if(this.checkOverlap(this.player, enemy)) {
-                this.gameOver();
+            for(var i = 0; i < this.enemies.length; i++) {
+                var enemy = this.enemies[i];
+                enemy.x -= gameSettings.movementSpeed;
+
+                if(enemy.x < 0) {
+                    enemy.kill();
+                    this.enemies.splice(i, 1);
+
+                    if(this.enemies.length == 0) {
+                        this.generateEnemy(gameSettings.difficulty);
+                    }
+                }
+
+                if(this.checkOverlap(this.player, enemy)) {
+                    this.gameOver();
+                }
             }
-        }
+        }    
     },
 
-    generateEnemy: function() {
+    generateEnemy: function(numberOfEnemies) {
         var minY = game.stage.getBounds().height / 2;
         var maxY = game.stage.getBounds().width;
+        var enemy, enemyAnim;
 
-        var enemy = game.add.sprite(game.stage.getBounds().width, Math.random() * (maxY - minY) + minY, assetEnemy.key);
-        enemy.scale.setTo(assetEnemy.scale.x, assetEnemy.scale.y);
+        for(var i = 0; i < numberOfEnemies; i++) {
+            enemy = game.add.sprite(
+                game.stage.getBounds().width + (Math.random() * gameSettings.distanceBetweenCars), 
+                Math.random() * (maxY - minY) + minY, assetEnemy.key);
+            enemy.scale.setTo(assetEnemy.scale.x, assetEnemy.scale.y);
 
-        var enemyAnim = enemy.animations.add(assetEnemy.anim);
-        enemy.animations.play(assetEnemy.anim, 10, true);
-        enemy.outOfBoundsKill = true;
+            enemyAnim = enemy.animations.add(assetEnemy.anim);
+            enemy.animations.play(assetEnemy.anim, 10, true);
 
-        this.enemies.push(enemy);
+            enemy.outOfBoundsKill = true;
+
+            this.enemies.push(enemy);
+        }
     },
 
     destroyEnemy: function(enemy) {
@@ -93,7 +105,15 @@ var states = {
     },
 
     gameOver: function() {
-        this.player.kill();
+        this.player.loadTexture('gameOver', 0);
+        this.player.animations.add('gameOverAnim');
+        this.player.animations.play('gameOverAnim', 10, true);
+
+        for(var i = 0; i < this.enemies.length; i++) {
+            this.enemies[i].animations.stop(null, true);
+        }
+
+        this.gameOver = true;
     },
 
     render: function() {
