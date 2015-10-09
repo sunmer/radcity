@@ -1,9 +1,15 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
-var gameSettings = { movementSpeed: 3, backgroundSpeed: 3, difficulty: 2, distanceBetweenCars: 200 };
-var assetPlayer = { res: 'assets/player_sprite.png', anim: 'playerAnim', scale: { x: 0.2, y: 0.2 }, key: 'player' };
-var assetEnemy = { res: 'assets/enemy_sprite.png', anim: 'enemyAnim', scale: { x: 0.2, y: 0.2 }, key: 'enemy' };
+var gameSettings = { movementSpeed: 3, backgroundSpeed: 3, difficulty: 2, distanceBetweenEnemies: 200 };
+var assetPlayer = { res: 'assets/player_dogi.png', anim: 'playerAnim', scale: { x: 0.2, y: 0.2 }, key: 'player' };
+var assetEnemy = {
+    enemies: [
+        { res: 'assets/enemy_jake.png', anim: 'enemyJakeAnim', key: 'enemyJake' },
+        { res: 'assets/enemy_nova.png', anim: 'enemyNovaAnim', key: 'enemyNova' }
+    ],
+    scale: { x: 0.2, y: 0.2 }
+};
 var assetLevel = { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' };
 
 var states = {
@@ -15,7 +21,11 @@ var states = {
 
     preload: function() {
         game.load.spritesheet(assetPlayer.key, assetPlayer.res, 140, 300, 4);
-        game.load.spritesheet(assetEnemy.key, assetEnemy.res, 140, 300, 4);
+
+        for(i = 0; i < assetEnemy.enemies.length; i++) {
+            game.load.spritesheet(assetEnemy.enemies[i].key, assetEnemy.enemies[i].res, 140, 300, 4);    
+        }
+        
         game.load.image(assetLevel.key, assetLevel.res);
 
         game.load.spritesheet('gameOver', 'assets/player_sprite_gameover.png', 212, 104, 2);
@@ -37,7 +47,7 @@ var states = {
     update: function() {
         if(!this.isGameOver) {
             if(game.input.keyboard.isDown(Phaser.Keyboard.W)) {
-                if(this.player.y > (game.stage.getBounds().height / 2)) {
+                if(this.player.y > (canvasHeight / 2)) {
                     this.player.y -= gameSettings.movementSpeed;
                 }
 
@@ -90,18 +100,21 @@ var states = {
     },
 
     generateEnemy: function(numberOfEnemies) {
-        var minY = game.stage.getBounds().height / 2;
+        var minY = canvasHeight / 2;
         var maxY = game.stage.getBounds().width;
-        var enemy, enemyAnim;
+        var enemy, enemyAnim, enemyType;
 
         for(var i = 0; i < numberOfEnemies; i++) {
+            enemyType = Math.round(Math.random() * 1);
+
             enemy = game.add.sprite(
-                game.stage.getBounds().width + (Math.random() * gameSettings.distanceBetweenCars), 
-                Math.random() * (maxY - minY) + minY, assetEnemy.key);
+                game.stage.getBounds().width + (Math.random() * gameSettings.distanceBetweenEnemies), 
+                Math.random() * (maxY - minY) + minY, 
+                assetEnemy.enemies[enemyType].key);
             enemy.scale.setTo(assetEnemy.scale.x, assetEnemy.scale.y);
 
-            enemyAnim = enemy.animations.add(assetEnemy.anim);
-            enemy.animations.play(assetEnemy.anim, 10, true);
+            enemyAnim = enemy.animations.add(assetEnemy.enemies[enemyType].anim);
+            enemy.animations.play(assetEnemy.enemies[enemyType].anim, 10, true);
 
             enemy.outOfBoundsKill = true;
 
