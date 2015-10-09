@@ -2,7 +2,14 @@ var canvasHeight = 600;
 var canvasWidth = 600;
 
 var gameSettings = { movementSpeed: 3, backgroundSpeed: 3, difficulty: 2, distanceBetweenEnemies: 200 };
-var assetPlayer = { res: 'assets/player_dogi.png', anim: 'playerAnim', scale: { x: 0.2, y: 0.2 }, key: 'player' };
+
+var assetPlayer = { 
+    res: 'assets/player_dogi.png', 
+    anim: 'playerAnim', 
+    animGameOver: 'playerAnimGameOver',
+    scale: { x: 0.2, y: 0.2 }, 
+    key: 'player' };
+
 var assetEnemy = {
     enemies: [
         { res: 'assets/enemy_jake.png', anim: 'enemyJakeAnim', key: 'enemyJake' },
@@ -10,6 +17,7 @@ var assetEnemy = {
     ],
     scale: { x: 0.2, y: 0.2 }
 };
+
 var assetLevel = { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' };
 
 var states = {
@@ -28,7 +36,7 @@ var states = {
         
         game.load.image(assetLevel.key, assetLevel.res);
 
-        game.load.spritesheet('gameOver', 'assets/player_sprite_gameover.png', 212, 104, 2);
+        game.load.spritesheet(assetPlayer.animGameOver, 'assets/player_dogi_gameover.png', 140, 300, 4);
     },
 
     create: function() {
@@ -134,7 +142,7 @@ var states = {
     },
 
     gameOver: function() {
-        this.player.loadTexture('gameOver', 0);
+        this.player.loadTexture(assetPlayer.animGameOver, 0);
         this.player.animations.add('gameOverAnim');
         this.player.animations.play('gameOverAnim', 10, true);
 
