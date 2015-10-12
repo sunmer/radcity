@@ -9,13 +9,14 @@ var assets = {
             res: 'assets/projectile.png',
             key: 'projectile',
             scale: { x: 0.3, y: 0.3 },
-            movementSpeed: 200
+            speed: 200
         },
         animations: {
             movement: {
                 res: 'assets/player_dogi.png',
                 key: 'player',
-                scale: { x: 0.2, y: 0.2 }
+                scale: { x: 0.2, y: 0.2 },
+                speed: 3
             },
             gameOver: {
                 res: 'assets/player_dogi_gameover.png',
@@ -24,10 +25,36 @@ var assets = {
             }
         }
     },
-    enemies: [
-        { res: 'assets/enemy_jake.png', anim: 'enemyJakeAnim', key: 'enemyJake', scale: { x: 0.2, y: 0.2 } },
-        { res: 'assets/enemy_nova.png', anim: 'enemyNovaAnim', key: 'enemyNova', scale: { x: 0.2, y: 0.2 } }
-    ],
+    enemies: {
+        nova: {
+            animations: {
+                movement: { 
+                    res: 'assets/enemy_jake.png',
+                    key: 'enemyJake',
+                    scale: { x: 0.2, y: 0.2 },
+                    speed: 200
+                },
+                killed: {
+                    res: 'assets/enemy_jake_killed.png',
+                    key: 'enemyJakeKilled'
+                }
+            }
+        },
+        jake: {
+            animations: {
+                movement: { 
+                    res: 'assets/enemy_nova.png',
+                    key: 'enemyNova',
+                    scale: { x: 0.2, y: 0.2 },
+                    speed: 200
+                },
+                killed: {
+                    res: 'assets/enemy_nova_killed.png',
+                    key: 'enemyNovaKilled'
+                }
+            }
+        }
+    },
     level: { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' }
 }
 
@@ -47,10 +74,10 @@ var states = {
         //Sprites and animations
         game.load.spritesheet(assets.player.animations.movement.key, assets.player.animations.movement.res, 140, 300, 4);
         game.load.spritesheet(assets.player.animations.gameOver.key, assets.player.animations.gameOver.res, 140, 300, 4);
-
-        for(i = 0; i < assets.enemies.length; i++) {
-            game.load.spritesheet(assets.enemies[i].key, assets.enemies[i].res, 140, 300, 4);    
-        }
+        game.load.spritesheet(assets.enemies.nova.animations.movement.key, assets.enemies.nova.animations.movement.res, 140, 300, 4);
+        game.load.spritesheet(assets.enemies.nova.animations.killed.key, assets.enemies.nova.animations.killed.res, 140, 300, 4);
+        game.load.spritesheet(assets.enemies.jake.animations.movement.key, assets.enemies.jake.animations.movement.res, 140, 300, 4);
+        game.load.spritesheet(assets.enemies.jake.animations.killed.key, assets.enemies.jake.animations.killed.res, 140, 300, 4);
     },
 
     create: function() {
@@ -75,25 +102,25 @@ var states = {
     update: function() {
         if(!this.isGameOver) {
             if(game.input.keyboard.isDown(Phaser.Keyboard.W)) {
-                if(this.player.y > (canvasHeight / 2)) {
-                    this.player.y -= gameSettings.movementSpeed;
+                if(this.player.body.y > (canvasHeight / 2)) {
+                    this.player.body.y -= assets.player.animations.movement.speed;
                 }
 
                 this.isPlayerMoving = true;
             }
             if(game.input.keyboard.isDown(Phaser.Keyboard.S)) {
-                this.player.y += gameSettings.movementSpeed;
+                this.player.body.y += assets.player.animations.movement.speed;
                 this.isPlayerMoving = true;
             }
             if(game.input.keyboard.isDown(Phaser.Keyboard.A)) {
-                this.player.x -= gameSettings.movementSpeed;
+                this.player.body.x -= assets.player.animations.movement.speed;
                 this.isPlayerMoving = true;
             }
             if(game.input.keyboard.isDown(Phaser.Keyboard.D)) {
-                if(this.player.x >= (game.stage.getBounds().width / 3)) {
+                if(this.player.body.x >= (canvasWidth / 3)) {
                     this.level.tilePosition.x -= gameSettings.backgroundSpeed;
                 } else {
-                    this.player.x += gameSettings.movementSpeed;
+                    this.player.body.x += assets.player.animations.movement.speed;
                 }
 
                 this.isPlayerMoving = true;
@@ -107,45 +134,55 @@ var states = {
 
             this.isPlayerMoving = false;
 
-            for(var i = 0; i < this.enemies.length; i++) {
-                var enemy = this.enemies[i];
-                enemy.x -= gameSettings.movementSpeed;
+            if(this.enemies.length) {
+                for(var i = 0; i < this.enemies.length; i++) {
+                    var enemy = this.enemies[i];
 
-                if(enemy.x < 0) {
-                    this.enemies.splice(i, 1);
-                    enemy.destroy();
-                    
-                    if(this.enemies.length == 0) {
-                        this.generateEnemy(gameSettings.difficulty);
+                    if(enemy.x < 0) {
+                        this.enemies.splice(i, 1);
+                        enemy.destroy();
+                    } else {
+                        if(this.checkOverlap(this.player, enemy)) {
+                            this.gameOver();
+                        }
+
+                        for(var y = 0; y < this.projectiles.length; y++) {
+                            if(this.checkOverlap(this.projectiles[y], enemy)) {
+                                this.killEnemy.call(this, enemy);
+                                this.projectiles[y].destroy();
+                                this.projectiles.splice(y, 1);
+                            }
+                        }
                     }
-                } else {
-                    if(this.checkOverlap(this.player, enemy)) {
-                        this.gameOver();
-                    }    
                 }
+            } else {
+                this.generateEnemy(gameSettings.difficulty);
             }
+            
         }    
     },
 
     generateEnemy: function(numberOfEnemies) {
         var minY = canvasHeight / 2;
         var maxY = game.stage.getBounds().width;
-        var enemy, enemyAnim, enemyType;
+        var enemy, enemyAsset;
 
         for(var i = 0; i < numberOfEnemies; i++) {
-            enemyType = Math.round(Math.random() * 1);
+            enemyAsset = assets.enemies[Object.keys(assets.enemies)[Math.round(Math.random() * (Object.keys(assets.enemies).length - 1))]];
 
             enemy = game.add.sprite(
-                game.stage.getBounds().width + (Math.random() * gameSettings.distanceBetweenEnemies), 
+                canvasWidth + (Math.random() * gameSettings.distanceBetweenEnemies), 
                 Math.random() * (maxY - minY) + minY, 
-                assets.enemies[enemyType].key);
+                enemyAsset.animations.movement.key);
 
-            enemy.scale.setTo(assets.enemies[enemyType].scale.x, assets.enemies[enemyType].scale.y);
-
-            enemyAnim = enemy.animations.add(assets.enemies[enemyType].anim);
-            enemy.animations.play(assets.enemies[enemyType].anim, 10, true);
-
-            enemy.outOfBoundsKill = true;
+            game.physics.enable(enemy, Phaser.Physics.ARCADE);
+            enemy.anchor.set(0.5);
+            enemy.scale.setTo(enemyAsset.animations.movement.scale.x, enemyAsset.animations.movement.scale.y);
+            enemy.animations.add(enemyAsset.animations.movement.key);
+            enemy.animations.play(enemyAsset.animations.movement.key, 10, true);
+            enemy.body.velocity.x -= enemyAsset.animations.movement.speed;
+            enemy.enemyAsset = enemyAsset;
+            enemy._spriteID = this.generateSpriteID();
 
             this.enemies.push(enemy);
         }
@@ -155,17 +192,31 @@ var states = {
         if(this.projectiles.length > 2) {
             this.projectiles[0].destroy();
             this.projectiles.splice(0, 1);
+        } else {
+            var projectile = game.add.sprite(this.player.x, this.player.y, assets.player.projectile.key);
+            game.physics.enable(projectile, Phaser.Physics.ARCADE);
+            projectile.anchor.set(0.5);
+            projectile.scale.setTo(assets.player.projectile.scale.x, assets.player.projectile.scale.y);
+            projectile.body.velocity.x += assets.player.projectile.speed;
 
-            return;
+            this.projectiles.push(projectile);
         }
+    },
 
-        var projectile = game.add.sprite(this.player.x, this.player.y, assets.player.projectile.key);
-        game.physics.enable(projectile, Phaser.Physics.ARCADE);
-        projectile.anchor.set(0.5);
-        projectile.scale.setTo(assets.player.projectile.scale.x, assets.player.projectile.scale.y);
-        projectile.body.velocity.x += assets.player.projectile.movementSpeed;
+    killEnemy: function(enemy) {
+        enemy.loadTexture(enemy.enemyAsset.animations.killed.key, 0);
+        enemy.animations.add(enemy.enemyAsset.animations.killed.key);
+        enemy.animations.play(enemy.enemyAsset.animations.killed.key, 10, true);
+        enemy.body.velocity.x = 0;
 
-        this.projectiles.push(projectile);
+        setTimeout(function() {
+            var elementPos = this.enemies.map(function(enemy) {
+                return enemy._spriteID; 
+            }).indexOf(enemy._spriteID);
+
+            this.enemies.splice(elementPos, 1);
+            enemy.destroy();
+        }.bind(this), 1000);
     },
 
     checkOverlap: function(spriteA, spriteB) {
@@ -187,10 +238,13 @@ var states = {
         this.isGameOver = true;
     },
 
+    generateSpriteID: function() {
+        return Math.round(Math.random() * 10000);
+    },
+
     render: function() {
         game.debug.inputInfo(16, 16);
     } 
 }
 
 var game = new Phaser.Game(canvasWidth, canvasHeight, Phaser.CANVAS, 'canvas', states);
-
