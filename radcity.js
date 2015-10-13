@@ -1,7 +1,7 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
-var gameSettings = { movementSpeed: 3, backgroundSpeed: 3, difficulty: 2, distanceBetweenEnemies: 200 };
+var gameSettings = { backgroundSpeed: 3, difficulty: 2, distanceBetweenEnemies: 200 };
 
 var assets = {
     player: {
@@ -59,12 +59,27 @@ var assets = {
 }
 
 var states = {
+
+    //Player
     player: undefined,
+
+    //Enemies currently in screen
     enemies: [],
+
+    //Bullets currently in screen
     projectiles: [],
+
+    //Current level
     level: undefined,
+
+    //Determines if player has lost
     isGameOver: false,
+
+    //Player is moving
     isPlayerMoving: false,
+
+    //For synchronizing and sanity checking enemy object count
+    enemyCount: 0,
 
     preload: function() {
         //Non-animated assets
@@ -147,7 +162,7 @@ var states = {
                         }
 
                         for(var y = 0; y < this.projectiles.length; y++) {
-                            if(this.checkOverlap(this.projectiles[y], enemy)) {
+                            if(this.checkOverlap(this.projectiles[y], enemy) && enemy._isAlive) {
                                 this.killEnemy.call(this, enemy);
                                 this.projectiles[y].destroy();
                                 this.projectiles.splice(y, 1);
@@ -155,7 +170,7 @@ var states = {
                         }
                     }
                 }
-            } else {
+            } else if(this.enemyCount < gameSettings.difficulty) {
                 this.generateEnemy(gameSettings.difficulty);
             }
             
@@ -163,17 +178,20 @@ var states = {
     },
 
     generateEnemy: function(numberOfEnemies) {
-        var minY = canvasHeight / 2;
-        var maxY = game.stage.getBounds().width;
+        this.enemyCount++;
+
+        var minY = game.cache.getImage(assets.level.key).height;
+        var maxY = canvasHeight;
         var enemy, enemyAsset;
 
         for(var i = 0; i < numberOfEnemies; i++) {
             enemyAsset = assets.enemies[Object.keys(assets.enemies)[Math.round(Math.random() * (Object.keys(assets.enemies).length - 1))]];
 
             enemy = game.add.sprite(
-                canvasWidth + (Math.random() * gameSettings.distanceBetweenEnemies), 
-                Math.random() * (maxY - minY) + minY, 
-                enemyAsset.animations.movement.key);
+                canvasWidth + (Math.random() * gameSettings.distanceBetweenEnemies),
+                Math.floor(Math.random() * ( maxY - minY) + minY),
+                enemyAsset.animations.movement.key
+            );
 
             game.physics.enable(enemy, Phaser.Physics.ARCADE);
             enemy.anchor.set(0.5);
@@ -182,7 +200,12 @@ var states = {
             enemy.animations.play(enemyAsset.animations.movement.key, 10, true);
             enemy.body.velocity.x -= enemyAsset.animations.movement.speed;
             enemy.enemyAsset = enemyAsset;
+
+            //For enemy lookup
             enemy._spriteID = this.generateSpriteID();
+
+            //Separate alive state mechanism, outside of Phaser's which affect animations
+            enemy._isAlive = true;
 
             this.enemies.push(enemy);
         }
@@ -204,6 +227,7 @@ var states = {
     },
 
     killEnemy: function(enemy) {
+        enemy._isAlive = false;
         enemy.loadTexture(enemy.enemyAsset.animations.killed.key, 0);
         enemy.animations.add(enemy.enemyAsset.animations.killed.key);
         enemy.animations.play(enemy.enemyAsset.animations.killed.key, 10, true);
@@ -216,6 +240,8 @@ var states = {
 
             this.enemies.splice(elementPos, 1);
             enemy.destroy();
+
+            this.enemyCount--;
         }.bind(this), 1000);
     },
 
