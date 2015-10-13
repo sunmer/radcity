@@ -1,7 +1,7 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
-var gameSettings = { backgroundSpeed: 3, difficulty: 2, distanceBetweenEnemies: 200 };
+var gameSettings = { backgroundSpeed: 3, difficulty: 5, minLengthBetweenEnemies: 200 };
 
 var assets = {
     player: {
@@ -78,8 +78,11 @@ var states = {
     //Player is moving
     isPlayerMoving: false,
 
-    //For synchronizing and sanity checking enemy object count
-    enemyCount: 0,
+    score: {
+        textScoreLabel: undefined,
+        textScore: undefined,
+        scoreValue: 0
+    },
 
     preload: function() {
         //Non-animated assets
@@ -93,6 +96,8 @@ var states = {
         game.load.spritesheet(assets.enemies.nova.animations.killed.key, assets.enemies.nova.animations.killed.res, 140, 300, 4);
         game.load.spritesheet(assets.enemies.jake.animations.movement.key, assets.enemies.jake.animations.movement.res, 140, 300, 4);
         game.load.spritesheet(assets.enemies.jake.animations.killed.key, assets.enemies.jake.animations.killed.res, 140, 300, 4);
+
+        game.load.bitmapFont('carrierCommand', 'assets/fonts/carrier_command.png', 'assets/fonts/carrier_command.xml');
     },
 
     create: function() {
@@ -112,6 +117,13 @@ var states = {
         projectile.onDown.add(this.generateProjectile, this);
 
         this.generateEnemy(gameSettings.difficulty);
+
+        this.score.textScoreLabel = game.add.bitmapText(0, canvasHeight - 20, 'carrierCommand', 'score', 20);
+        this.score.textScoreLabel.align = 'center';
+        this.score.textScore = game.add.bitmapText(this.score.textScoreLabel.width + 10, 
+            canvasHeight - 20,
+            'carrierCommand', '0', 20);
+        this.score.textScore.align = 'right';
     },
 
     update: function() {
@@ -170,7 +182,7 @@ var states = {
                         }
                     }
                 }
-            } else if(this.enemyCount < gameSettings.difficulty) {
+            } else if(this.enemies.length < gameSettings.difficulty) {
                 this.generateEnemy(gameSettings.difficulty);
             }
             
@@ -178,8 +190,6 @@ var states = {
     },
 
     generateEnemy: function(numberOfEnemies) {
-        this.enemyCount++;
-
         var minY = game.cache.getImage(assets.level.key).height;
         var maxY = canvasHeight;
         var enemy, enemyAsset;
@@ -188,7 +198,7 @@ var states = {
             enemyAsset = assets.enemies[Object.keys(assets.enemies)[Math.round(Math.random() * (Object.keys(assets.enemies).length - 1))]];
 
             enemy = game.add.sprite(
-                canvasWidth + (Math.random() * gameSettings.distanceBetweenEnemies),
+                canvasWidth + (Math.random() * gameSettings.minLengthBetweenEnemies),
                 Math.floor(Math.random() * ( maxY - minY) + minY),
                 enemyAsset.animations.movement.key
             );
@@ -227,6 +237,8 @@ var states = {
     },
 
     killEnemy: function(enemy) {
+        this.score.scoreValue += 1;
+        this.score.textScore.setText(this.score.scoreValue);
         enemy._isAlive = false;
         enemy.loadTexture(enemy.enemyAsset.animations.killed.key, 0);
         enemy.animations.add(enemy.enemyAsset.animations.killed.key);
@@ -240,9 +252,7 @@ var states = {
 
             this.enemies.splice(elementPos, 1);
             enemy.destroy();
-
-            this.enemyCount--;
-        }.bind(this), 1000);
+        }.bind(this), 500);
     },
 
     checkOverlap: function(spriteA, spriteB) {
