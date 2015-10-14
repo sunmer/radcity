@@ -1,10 +1,11 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
-var gameSettings = { backgroundSpeed: 3, difficulty: 5, minLengthBetweenEnemies: 200 };
+var gameSettings = { backgroundSpeed: 3, difficulty: 4, minLengthBetweenEnemies: 200 };
 
 var assets = {
     player: {
+        dimensions: { width: 235, height: 300 },
         projectile: {
             res: 'assets/projectile.png',
             key: 'projectile',
@@ -18,15 +19,21 @@ var assets = {
                 scale: { x: 0.2, y: 0.2 },
                 speed: 3
             },
+            projectile: {
+                res: 'assets/player_dogi_projectile.png',
+                key: 'playerProjectile',
+                scale: { x: 0.2, y: 0.2 }
+            },
             gameOver: {
                 res: 'assets/player_dogi_gameover.png',
                 key: 'playerGameOver',
-                scale: { x: 0.2, y: 0.2 },
+                scale: { x: 0.2, y: 0.2 }
             }
         }
     },
     enemies: {
         nova: {
+            dimensions: { width: 140, height: 300 },
             animations: {
                 movement: { 
                     res: 'assets/enemy_jake.png',
@@ -36,17 +43,19 @@ var assets = {
                 },
                 killed: {
                     res: 'assets/enemy_jake_killed.png',
-                    key: 'enemyJakeKilled'
+                    key: 'enemyJakeKilled',
+                    dimensions: { width: 140, height: 300 }
                 }
             }
         },
         jake: {
+            dimensions: { width: 140, height: 300 },
             animations: {
                 movement: { 
                     res: 'assets/enemy_nova.png',
                     key: 'enemyNova',
                     scale: { x: 0.2, y: 0.2 },
-                    speed: 200
+                    speed: 200,
                 },
                 killed: {
                     res: 'assets/enemy_nova_killed.png',
@@ -55,7 +64,8 @@ var assets = {
             }
         }
     },
-    level: { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' }
+    level: { res: 'assets/bg_level.png', anim: 'level1Anim', scale: { x: 1, y: 1 }, key: 'level1' },
+    font: { name: 'carrierCommand', resPNG: 'assets/fonts/carrier_command.png', resXML: 'assets/fonts/carrier_command.xml' }
 }
 
 var states = {
@@ -78,10 +88,12 @@ var states = {
     //Player is moving
     isPlayerMoving: false,
 
-    score: {
-        textScoreLabel: undefined,
-        textScore: undefined,
-        scoreValue: 0
+    textScore: {
+        label: 'score',
+        value: 0,
+        viewLabel: undefined,
+        viewValue: undefined,
+        fontSize: 20
     },
 
     preload: function() {
@@ -89,15 +101,18 @@ var states = {
         game.load.image(assets.level.key, assets.level.res);
         game.load.image(assets.player.projectile.key, assets.player.projectile.res);
 
-        //Sprites and animations
-        game.load.spritesheet(assets.player.animations.movement.key, assets.player.animations.movement.res, 140, 300, 4);
-        game.load.spritesheet(assets.player.animations.gameOver.key, assets.player.animations.gameOver.res, 140, 300, 4);
-        game.load.spritesheet(assets.enemies.nova.animations.movement.key, assets.enemies.nova.animations.movement.res, 140, 300, 4);
-        game.load.spritesheet(assets.enemies.nova.animations.killed.key, assets.enemies.nova.animations.killed.res, 140, 300, 4);
-        game.load.spritesheet(assets.enemies.jake.animations.movement.key, assets.enemies.jake.animations.movement.res, 140, 300, 4);
-        game.load.spritesheet(assets.enemies.jake.animations.killed.key, assets.enemies.jake.animations.killed.res, 140, 300, 4);
+        //Player sprites and animations
+        game.load.spritesheet(assets.player.animations.movement.key, assets.player.animations.movement.res, assets.player.dimensions.width, assets.player.dimensions.height, 4);
+        game.load.spritesheet(assets.player.animations.gameOver.key, assets.player.animations.gameOver.res, assets.player.dimensions.width, assets.player.dimensions.height, 4);
+        game.load.spritesheet(assets.player.animations.projectile.key, assets.player.animations.projectile.res, assets.player.dimensions.width, assets.player.dimensions.height, 1);
 
-        game.load.bitmapFont('carrierCommand', 'assets/fonts/carrier_command.png', 'assets/fonts/carrier_command.xml');
+        //Enemy sprites and animations
+        game.load.spritesheet(assets.enemies.nova.animations.movement.key, assets.enemies.nova.animations.movement.res, assets.enemies.nova.dimensions.width, assets.enemies.nova.dimensions.height, 4);
+        game.load.spritesheet(assets.enemies.nova.animations.killed.key, assets.enemies.nova.animations.killed.res, assets.enemies.nova.dimensions.width, assets.enemies.nova.dimensions.height, 4);
+        game.load.spritesheet(assets.enemies.jake.animations.movement.key, assets.enemies.jake.animations.movement.res, assets.enemies.jake.dimensions.width, assets.enemies.jake.dimensions.height, 4);
+        game.load.spritesheet(assets.enemies.jake.animations.killed.key, assets.enemies.jake.animations.killed.res, assets.enemies.jake.dimensions.width, assets.enemies.jake.dimensions.height, 4);
+
+        game.load.bitmapFont(assets.font.name, assets.font.resPNG, assets.font.resXML);
     },
 
     create: function() {
@@ -106,24 +121,22 @@ var states = {
         
         this.player = game.add.sprite(game.world.centerX, game.world.centerY, assets.player.animations.movement.key);
         game.physics.enable(this.player, Phaser.Physics.ARCADE);
-
         this.player.body.collideWorldBounds = true;
         this.player.anchor.set(0.5);
         this.player.scale.setTo(assets.player.animations.movement.scale.x, assets.player.animations.movement.scale.y);
+
         this.player.animations.add(assets.player.animations.movement.key);
+        this.player.animations.add(assets.player.animations.gameOver.key);
 
         //Listeners
-        projectile = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
-        projectile.onDown.add(this.generateProjectile, this);
+        game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR).onDown.add(this.generateProjectile, this);
 
         this.generateEnemy(gameSettings.difficulty);
 
-        this.score.textScoreLabel = game.add.bitmapText(0, canvasHeight - 20, 'carrierCommand', 'score', 20);
-        this.score.textScoreLabel.align = 'center';
-        this.score.textScore = game.add.bitmapText(this.score.textScoreLabel.width + 10, 
-            canvasHeight - 20,
-            'carrierCommand', '0', 20);
-        this.score.textScore.align = 'right';
+        this.textScore.viewLabel = game.add.bitmapText(0, canvasHeight - 20, assets.font.name, this.textScore.label, 20);
+        this.textScore.viewLabel.align = 'center';
+        this.textScore.viewValue = game.add.bitmapText(this.textScore.viewLabel.width + 10, canvasHeight - 20, assets.font.name, this.textScore.value, 20);
+        this.textScore.viewValue.align = 'right';
     },
 
     update: function() {
@@ -154,7 +167,7 @@ var states = {
             }
 
             if(this.isPlayerMoving) {
-                this.player.animations.play(assets.player.animations.movement.key, 10, true);
+                this.player.animations.play(assets.player.animations.movement.key, 10);
             } else {
                 this.player.animations.stop(null, true);
             }
@@ -222,11 +235,19 @@ var states = {
     },
 
     generateProjectile: function() {
+        this.player.loadTexture(assets.player.animations.projectile.key, 0);
+        this.player.animations.play(assets.player.animations.projectile.key, 10);
+
+        setTimeout(function() {
+            this.player.loadTexture(assets.player.animations.movement.key, 0);
+            this.player.animations.play(assets.player.animations.movement.key, 10);
+        }.bind(this), 250);
+
         if(this.projectiles.length > 2) {
             this.projectiles[0].destroy();
             this.projectiles.splice(0, 1);
         } else {
-            var projectile = game.add.sprite(this.player.x, this.player.y, assets.player.projectile.key);
+            var projectile = game.add.sprite(this.player.x + 15, this.player.y, assets.player.projectile.key);
             game.physics.enable(projectile, Phaser.Physics.ARCADE);
             projectile.anchor.set(0.5);
             projectile.scale.setTo(assets.player.projectile.scale.x, assets.player.projectile.scale.y);
@@ -237,12 +258,11 @@ var states = {
     },
 
     killEnemy: function(enemy) {
-        this.score.scoreValue += 1;
-        this.score.textScore.setText(this.score.scoreValue);
+        this.textScore.viewValue.setText(this.textScore.value += 1);
         enemy._isAlive = false;
         enemy.loadTexture(enemy.enemyAsset.animations.killed.key, 0);
         enemy.animations.add(enemy.enemyAsset.animations.killed.key);
-        enemy.animations.play(enemy.enemyAsset.animations.killed.key, 10, true);
+        enemy.animations.play(enemy.enemyAsset.animations.killed.key, 10);
         enemy.body.velocity.x = 0;
 
         setTimeout(function() {
@@ -264,7 +284,6 @@ var states = {
 
     gameOver: function() {
         this.player.loadTexture(assets.player.animations.gameOver.key, 0);
-        this.player.animations.add(assets.player.animations.gameOver.key);
         this.player.animations.play(assets.player.animations.gameOver.key, 10, true);
 
         for(var i = 0; i < this.enemies.length; i++) {
