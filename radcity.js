@@ -235,30 +235,33 @@ var states = {
     },
 
     generateProjectile: function() {
-        this.player.loadTexture(assets.player.animations.projectile.key, 0);
-        this.player.animations.play(assets.player.animations.projectile.key, 10);
+        if(!this.isGameOver) {
+            this.player.loadTexture(assets.player.animations.projectile.key, 0);
+            this.player.animations.play(assets.player.animations.projectile.key, 10);
 
-        setTimeout(function() {
-            this.player.loadTexture(assets.player.animations.movement.key, 0);
-            this.player.animations.play(assets.player.animations.movement.key, 10);
-        }.bind(this), 250);
+            setTimeout(function() {
+                this.player.loadTexture(assets.player.animations.movement.key, 0);
+                this.player.animations.play(assets.player.animations.movement.key, 10);
+            }.bind(this), 250);
 
-        if(this.projectiles.length > 2) {
-            this.projectiles[0].destroy();
-            this.projectiles.splice(0, 1);
-        } else {
-            var projectile = game.add.sprite(this.player.x + 15, this.player.y, assets.player.projectile.key);
-            game.physics.enable(projectile, Phaser.Physics.ARCADE);
-            projectile.anchor.set(0.5);
-            projectile.scale.setTo(assets.player.projectile.scale.x, assets.player.projectile.scale.y);
-            projectile.body.velocity.x += assets.player.projectile.speed;
+            if(this.projectiles.length > 2) {
+                this.projectiles[0].destroy();
+                this.projectiles.splice(0, 1);
+            } else {
+                var projectile = game.add.sprite(this.player.x + 15, this.player.y, assets.player.projectile.key);
+                game.physics.enable(projectile, Phaser.Physics.ARCADE);
+                projectile.anchor.set(0.5);
+                projectile.scale.setTo(assets.player.projectile.scale.x, assets.player.projectile.scale.y);
+                projectile.body.velocity.x += assets.player.projectile.speed;
 
-            this.projectiles.push(projectile);
+                this.projectiles.push(projectile);
+            }
         }
     },
 
     killEnemy: function(enemy) {
-        this.textScore.viewValue.setText(this.textScore.value += 1);
+        this.increaseScore(5);
+
         enemy._isAlive = false;
         enemy.loadTexture(enemy.enemyAsset.animations.killed.key, 0);
         enemy.animations.add(enemy.enemyAsset.animations.killed.key);
@@ -295,6 +298,10 @@ var states = {
 
     generateSpriteID: function() {
         return Math.round(Math.random() * 10000);
+    },
+
+    increaseScore: function(value) {
+        this.textScore.viewValue.setText(this.textScore.value += value);
     },
 
     render: function() {
