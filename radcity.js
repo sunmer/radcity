@@ -1,7 +1,7 @@
 var canvasHeight = 600;
 var canvasWidth = 600;
 
-var gameSettings = { backgroundSpeed: 3, difficulty: 4, minLengthBetweenEnemies: 200 };
+var gameSettings = { backgroundSpeed: 3, minLengthBetweenEnemies: 200 };
 
 var assets = {
     player: {
@@ -39,7 +39,7 @@ var assets = {
                     res: 'assets/enemy_jake.png',
                     key: 'enemyJake',
                     scale: { x: 0.2, y: 0.2 },
-                    speed: 200
+                    speed: 100
                 },
                 killed: {
                     res: 'assets/enemy_jake_killed.png',
@@ -82,8 +82,11 @@ var states = {
     //Current level
     level: undefined,
 
+    //Game's overall difficulty (currently number of enemies)
+    difficulty: 4,
+
     //Determines if player has lost
-    isGameOver: false,
+    isGameOver: true,
 
     //Player is moving
     isPlayerMoving: false,
@@ -94,6 +97,12 @@ var states = {
         viewLabel: undefined,
         viewValue: undefined,
         fontSize: 20
+    },
+
+    textMessagePlayer: {
+        viewLabel: undefined,
+        fontSize: 30,
+        messages: ['Nice shot!', 'Awww yeah!', 'Fuck yeah!', 'Pew pew!']
     },
 
     preload: function() {
@@ -128,15 +137,17 @@ var states = {
         this.player.animations.add(assets.player.animations.movement.key);
         this.player.animations.add(assets.player.animations.gameOver.key);
 
-        //Listeners
-        game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR).onDown.add(this.generateProjectile, this);
-
-        this.generateEnemy(gameSettings.difficulty);
-
-        this.textScore.viewLabel = game.add.bitmapText(0, canvasHeight - 20, assets.font.name, this.textScore.label, 20);
+        //Text asssets
+        this.textScore.viewLabel = game.add.bitmapText(0, canvasHeight - this.textScore.fontSize, assets.font.name, this.textScore.label, this.textScore.fontSize);
         this.textScore.viewLabel.align = 'center';
-        this.textScore.viewValue = game.add.bitmapText(this.textScore.viewLabel.width + 10, canvasHeight - 20, assets.font.name, this.textScore.value, 20);
+        this.textScore.viewValue = game.add.bitmapText(this.textScore.viewLabel.width + 10, canvasHeight - this.textScore.fontSize, assets.font.name, this.textScore.value.toString(), this.textScore.fontSize);
         this.textScore.viewValue.align = 'right';
+
+        this.textMessagePlayer.viewLabel = game.add.bitmapText(canvasWidth / 2, canvasHeight / 3, assets.font.name, "", this.textMessagePlayer.fontSize);
+        this.textMessagePlayer.viewLabel.anchor.set(0.5);
+        this.textMessagePlayer.viewLabel.align = 'center';
+
+        this.textMessagePlayer.viewLabel.setText("PRESS SPACE\n TO START");
     },
 
     update: function() {
@@ -195,11 +206,13 @@ var states = {
                         }
                     }
                 }
-            } else if(this.enemies.length < gameSettings.difficulty) {
-                this.generateEnemy(gameSettings.difficulty);
+            } else if(this.enemies.length < this.difficulty) {
+                this.difficulty++;
+                this.generateEnemy(this.difficulty);
             }
-            
-        }    
+        } else if(this.isGameOver && game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+            this.startGame();
+        }
     },
 
     generateEnemy: function(numberOfEnemies) {
@@ -260,7 +273,11 @@ var states = {
     },
 
     killEnemy: function(enemy) {
-        this.increaseScore(5);
+        if(this.textScore.value % 5 == 0) {
+            this.messagePlayer(this.textMessagePlayer.messages[Math.round(Math.random() * (this.textMessagePlayer.messages.length - 1))]);    
+        }
+        
+        this.increaseScoreBy(1);
 
         enemy._isAlive = false;
         enemy.loadTexture(enemy.enemyAsset.animations.killed.key, 0);
@@ -278,6 +295,13 @@ var states = {
         }.bind(this), 500);
     },
 
+    startGame: function() {
+        this.isGameOver = false;
+        this.textMessagePlayer.viewLabel.visible = false;
+        game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR).onDown.add(this.generateProjectile, this);
+        this.generateEnemy(this.difficulty);
+    },
+
     checkOverlap: function(spriteA, spriteB) {
         var boundsA = spriteA.getBounds();
         var boundsB = spriteB.getBounds();
@@ -286,26 +310,36 @@ var states = {
     },
 
     gameOver: function() {
+        this.isGameOver = true;
+        
         this.player.loadTexture(assets.player.animations.gameOver.key, 0);
         this.player.animations.play(assets.player.animations.gameOver.key, 10, true);
 
         for(var i = 0; i < this.enemies.length; i++) {
             this.enemies[i].animations.stop(null, true);
         }
-
-        this.isGameOver = true;
     },
 
     generateSpriteID: function() {
         return Math.round(Math.random() * 10000);
     },
 
-    increaseScore: function(value) {
+    increaseScoreBy: function(value) {
         this.textScore.viewValue.setText(this.textScore.value += value);
     },
 
+    messagePlayer: function(message, duration) {
+        this.textMessagePlayer.viewLabel.visible = true;
+        this.textMessagePlayer.viewLabel.setText(message);
+
+        setTimeout(function() {
+            this.textMessagePlayer.viewLabel.visible = false;
+            this.textMessagePlayer.viewLabel.setText("");
+        }.bind(this), duration ? duration : 500);
+    },
+
     render: function() {
-        game.debug.inputInfo(16, 16);
+        
     } 
 }
 
