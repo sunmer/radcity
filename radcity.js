@@ -101,8 +101,15 @@ var states = {
 
     textMessagePlayer: {
         viewLabel: undefined,
-        fontSize: 30,
+        fontSize: 40,
         messages: ['Nice shot!', 'Awww yeah!', 'Fuck yeah!', 'Pew pew!']
+    },
+
+    textMessageInstructions: {
+        viewLabel: undefined,
+        fontSize: 18,
+        viewLabel: undefined,
+        viewValue: 'W = up\nA = left\nS = down\nD = right\nSpace = fire\nPress space to start'
     },
 
     preload: function() {
@@ -147,7 +154,12 @@ var states = {
         this.textMessagePlayer.viewLabel.anchor.set(0.5);
         this.textMessagePlayer.viewLabel.align = 'center';
 
-        this.textMessagePlayer.viewLabel.setText("PRESS SPACE\n TO START");
+        this.textMessagePlayer.viewLabel.setText("KILLDOG");
+
+        this.textMessageInstructions.viewLabel = game.add.bitmapText(canvasWidth / 2, canvasHeight - 200, assets.font.name, "", this.textMessageInstructions.fontSize);
+        this.textMessageInstructions.viewLabel.anchor.set(0.5);
+        this.textMessageInstructions.viewLabel.align = 'left';
+        this.textMessageInstructions.viewLabel.setText(this.textMessageInstructions.viewValue);
     },
 
     update: function() {
@@ -207,7 +219,7 @@ var states = {
                     }
                 }
             } else if(this.enemies.length < this.difficulty) {
-                this.difficulty++;
+                this.difficulty += 4;
                 this.generateEnemy(this.difficulty);
             }
         } else if(this.isGameOver && game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
@@ -298,6 +310,7 @@ var states = {
     startGame: function() {
         this.isGameOver = false;
         this.textMessagePlayer.viewLabel.visible = false;
+        this.textMessageInstructions.viewLabel.visible = false;
         game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR).onDown.add(this.generateProjectile, this);
         this.generateEnemy(this.difficulty);
     },
